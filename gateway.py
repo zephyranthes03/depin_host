@@ -199,13 +199,13 @@ async def upload_content_web3(
         buffer.write(await file.read())
 
     # # 3️⃣ EthStorage 업로드 수행 (ethfs-uploader 활용)
-    # cmd = f"ethfs-cli create -p {PRIVATEKEY} -c 11155111 -r {ETH_RPC_URL} --type blob"
-    # result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    cmd = f"ethfs-cli create -p {PRIVATEKEY} -c 11155111 -r {ETH_RPC_URL} --type blob"
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
-    # if result.returncode != 0:
-    #     raise HTTPException(status_code=500, detail="EthStorage create failed.")
+    if result.returncode != 0:
+        raise HTTPException(status_code=500, detail="EthStorage create failed.")
 
-    # FLAT_DIRECTORY = address_pattern.search(result.stdout).group(1)
+    FLAT_DIRECTORY = address_pattern.search(result.stdout).group(1)
 
     # 3️⃣ EthStorage 업로드 수행 (ethfs-uploader 활용)
     cmd = f"ethfs-cli upload -f {file_location} -a {FLAT_DIRECTORY} -p {PRIVATEKEY} -c 11155111 -r {ETH_RPC_URL} --type blob"
