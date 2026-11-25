@@ -1,179 +1,41 @@
-# Web3 Video Streaming Service - Host
+# DePIN Video Streaming Gateway
 
-A decentralized video streaming service built on Web3 and Ethereum blockchain. This project allows users to upload videos to IPFS/EthStorage, register and deregister video streams, record view histories, and distribute earnings between content creators and providers. The frontend is built with **Next.js** and **ethers.js**, and the backend is powered by **FastAPI** and **Web3.py**.
+The gateway for a 2025 hackathon prototype that streams video from independently operated nodes. This FastAPI service receives uploads, stores content metadata and view records in SQLite, and registers available streams in Redis.
 
-## Features
-- Upload videos to **EthStorage(IPFS)** and get a CID.
-- Register and deregister video streams with metadata.
-- Record view histories with blockchain transactions.
-- (DePIN) Distribute earnings between creators and providers using Ethereum.
+## Project components
 
----
+| Repository | Role |
+| --- | --- |
+| Gateway | Accepts video uploads and provides the stream registry, catalog, and view-log API. |
+| [depin_client](https://github.com/zephyranthes03/depin_client) | Fetches source video, transcodes it to HLS, and registers the stream with the gateway. |
+| [front_depin_host](https://github.com/zephyranthes03/front_depin_host) | Provides creator, provider, and viewer workflows in the browser. |
 
-## Installation
+## Local setup
 
-## Prerequisites
-- **Python 3.10+**
-- **IPFS** and **EthStorage CLI** installed
-- **Redis** for caching
-- **SQLite** for metadata and logs
+The gateway expects Python 3.10 or later and Redis at `localhost:6379`. The upload paths use the IPFS or EthStorage CLI. Configure the variables in [env.sample](env.sample) in your local shell for the storage path you use.
 
-## Setup
+~~~sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m uvicorn gateway:app --host 127.0.0.1 --port 8000
+~~~
 
-1. Clone the repository:
-```
-bash
-git clone https://github.com/yourusername/web3-video-streaming.git
-cd web3-video-streaming
-```
+Use the [generated API docs](http://127.0.0.1:8000/docs) for request and response schemas. The prototype includes service URLs from the original demo. Configure each component for your own local stack before testing the full flow.
 
-2. Create a virtual environment
-```
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate     # Windows
-```
+## Gateway API
 
-3. Install Python dependencies
-```
-pip install -r requirements.txt
-```
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /upload-content` | Upload video through IPFS and record its metadata. |
+| `POST /upload-content-web3` | Upload through the EthStorage path. |
+| `POST /register`, `POST /deregister` | Add or remove streaming nodes in the Redis registry. |
+| `GET /meta/get_all_metadata` | List video metadata for the browser app. |
+| `POST /api/record-view` | Store a view record in SQLite. |
+| `GET /api/get-records/cid/{cid}` | Retrieve view records for one video. |
 
-4. Set up environment variables : Create `.env` reference by `env.sample`
-
-5. Start Redis server
-```
-docker run --name redis -p 6379:6379 -v /your/local/path:/data -d redis redis-server --appendonly yes
-
-```
-
-6. Start the FastAPI server
-```
-uvicorn gateway:app --reload --host 0.0.0.0 --port 8000
-
-```
-
-## Database Schema
-
-SQLite Tables:
-
-content_metadata: Stores video metadata.
-
-cid, video_name, content_creator_wallet, creator_share, provider_share, price.
-streaming_access_logs: Stores view history.
-
-cid, blockchain_address, provider_wallet, creator_wallet, price, timestamp.
-
-
-## RestAPI document
-```
-http://localhost:8000/docs
-```
-
-
-## API Documentation
-
-1. Upload Content to IPFS
-Endpoint: /upload-content
-Method: POST
-Description: Uploads video and saves metadata to IPFS and SQLite.
-
-# Example Request:
-
-```
-curl -X POST "http://localhost:8000/upload-content" \
--H "Content-Type: multipart/form-data" \
--F "file=@./data/video.mp4" \
--F 'json_data={"video_name": "Sample Video", "content_creator_wallet": "0x1234", "creator_share": 70, "provider_share": 30, "price": 0.001}'
-
-2. Register Video Stream
-Endpoint: /register
-Method: POST
-Description: Registers a video stream to Redis.
-```
-
-# Payload Example:
-
-```
-{
-  "cid": "0x1234...",
-  "stream_url": "http://localhost:9000/stream",
-  "video_name": "Sample Video",
-  "content_creator_wallet": "0xCreator...",
-  "content_distributor_wallet": "0xDistributor...",
-  "creator_share": 70,
-  "provider_share": 30,
-  "price": 0.001
-}
-```
-
-3. Deregister Video Stream
-Endpoint: /deregister
-Method: POST
-Description: Removes a video stream from Redis.
-
-# Payload Example:
-
-```
-{
-  "cid": "0x1234...",
-  "content_distributor_wallet": "0xDistributor..."
-}
-```
-
-4. Record View History
-Endpoint: /api/record-view
-Method: POST
-Description: Records a view log in SQLite.
-
-Payload Example:
-```
-{
-  "cid": "0x1234...",
-  "blockchain_address": "0xViewer...",
-  "provider_wallet": "0xProvider...",
-  "creator_wallet": "0xCreator...",
-  "price": "0.001",
-  "timestamp": "2023-07-31T12:00:00Z"
-}
-```
-
-5. Get View History by CID
-Endpoint: /api/get-records/cid/{cid}
-Method: GET
-Description: Retrieves view history for a specific CID.
-
-💸 Earnings Distribution
-Script: distribute_earnings.py
-Description: Fetches view logs and distributes earnings between creator and provider based on the share ratio.
-
-# Run the script:
-
-```
-python distribute_earnings.py
-```
-
-## Development Notes
-Ensure MetaMask is connected to the Sepolia test network.
-Customize ethers interactions in the frontend for real deployments.
-
+The separate [distribution script](distribute_script.py) reads view records and contains the prototype transaction-signing path. The local gateway setup above starts only the API.
 
 ## License
-This project is licensed under the MIT License. See the LICENSE file for details.
 
-## Contributing
-Fork the repo.
-Create your feature branch (git checkout -b feature/AmazingFeature).
-Commit your changes (git commit -m 'Add some AmazingFeature').
-Push to the branch (git push origin feature/AmazingFeature).
-Open a Pull Request.
-
-## Troubleshooting
-CORS Error: Ensure FastAPI CORS settings match your frontend URL.
-RPC Connection Error: Check .env for correct ETH_RPC_URL and PRIVATEKEY.
-Missing Packages: Run pip install -r requirements.txt and npm install in respective directories.
-For further assistance, open an issue on GitHub. 👍
-
-## Contact
-Email: zephyranthes032@gmail.com
-GitHub: github.com/zephyranthes03
+[MIT](LICENSE)
